@@ -16,6 +16,16 @@
 #include "util.h"
 #include "INTERN.h"
 #include "perl.h"
+
+ARG *addflags();
+ARG *cmd_to_arg();
+ARG *cval_to_arg();
+ARG *hide_ary();
+ARG *l();
+ARG *listish();
+ARG *make_list();
+ARG *mod_match();
+
 char *tokename[] = {
 "256",
 "word",
