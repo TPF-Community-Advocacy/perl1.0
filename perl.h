@@ -61,12 +61,6 @@ typedef struct htbl HASH;
 #include "array.h"
 #include "hash.h"
 
-#ifdef CHARSPRINTF
-    char *sprintf();
-#else
-    int sprintf();
-#endif
-
 /* A string is TRUE if not "" or "0". */
 #define True(val) (tmps = (val), (*tmps && !(*tmps == '0' && !tmps[1])))
 EXT char *Yes INIT("1");
