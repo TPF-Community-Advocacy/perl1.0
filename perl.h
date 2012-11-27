@@ -23,14 +23,12 @@
 #define VOIDUSED 1
 #include "config.h"
 
-#ifndef BCOPY
-#   define bcopy(s1,s2,l) memcpy(s2,s1,l);
-#   define bzero(s,l) memset(s,0,l);
-#endif
-
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <setjmp.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -41,6 +39,11 @@
 #endif
 
 #include <sys/times.h>
+
+#ifndef BCOPY
+#   define bcopy(s1,s2,l) memcpy(s2,s1,l)
+#   define bzero(s,l) memset(s,0,l)
+#endif
 
 typedef struct arg ARG;
 typedef struct cmd CMD;
