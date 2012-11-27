@@ -1,13 +1,24 @@
-/* $Header: perl.h,v 1.0 87/12/18 13:05:38 root Exp $
+/* $Header: perl.h,v 1.0.1.4 88/01/30 08:54:00 root Exp $
  *
  * $Log:	perl.h,v $
+ * Revision 1.0.1.4  88/01/30  08:54:00  root
+ * patch9: changed #define YYDEBUG; to #define YYDEBUG 1
+ * 
+ * Revision 1.0.1.3  88/01/28  10:24:17  root
+ * patch8: added eval operator.
+ * 
+ * Revision 1.0.1.2  88/01/24  03:53:47  root
+ * patch 2: hid str_peek() in #ifdef DEBUGGING.
+ * 
+ * Revision 1.0.1.1  88/01/21  21:29:23  root
+ * No longer defines STDSTDIO--gets it from config.h now.
+ * 
  * Revision 1.0  87/12/18  13:05:38  root
  * Initial revision
  * 
  */
 
 #define DEBUGGING
-#define STDSTDIO	/* eventually should be in config.h */
 
 #define VOIDUSED 1
 #include "config.h"
@@ -22,7 +33,13 @@
 #include <setjmp.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef TMINSYS
+#include <sys/time.h>
+#else
 #include <time.h>
+#endif
+
 #include <sys/times.h>
 
 typedef struct arg ARG;
@@ -44,6 +61,12 @@ typedef struct htbl HASH;
 #include "array.h"
 #include "hash.h"
 
+#ifdef CHARSPRINTF
+    char *sprintf();
+#else
+    int sprintf();
+#endif
+
 /* A string is TRUE if not "" or "0". */
 #define True(val) (tmps = (val), (*tmps && !(*tmps == '0' && !tmps[1])))
 EXT char *Yes INIT("1");
@@ -51,7 +74,10 @@ EXT char *No INIT("");
 
 #define str_true(str) (Str = (str), (Str->str_pok ? True(Str->str_ptr) : (Str->str_nok ? (Str->str_nval != 0.0) : 0 )))
 
+#ifdef DEBUGGING
 #define str_peek(str) (Str = (str), (Str->str_pok ? Str->str_ptr : (Str->str_nok ? (sprintf(buf,"num(%g)",Str->str_nval),buf) : "" )))
+#endif
+
 #define str_get(str) (Str = (str), (Str->str_pok ? Str->str_ptr : str_2ptr(Str)))
 #define str_gnum(str) (Str = (str), (Str->str_nok ? Str->str_nval : str_2num(Str)))
 EXT STR *Str;
@@ -83,7 +109,8 @@ ARG *flipflip();
 STR *arg_to_str();
 STR *str_new();
 STR *stab_str();
-STR *eval();
+STR *eval();		/* this evaluates expressions */
+STR *do_eval();		/* this evaluates eval operator */
 
 FCMD *load_format();
 
@@ -144,6 +171,7 @@ EXT char *inplace INIT(Nullch);
 EXT char tokenbuf[256];
 EXT int expectterm INIT(TRUE);
 EXT int lex_newlines INIT(FALSE);
+EXT int in_eval INIT(FALSE);
 
 FILE *popen();
 /* char *str_get(); */
@@ -159,7 +187,7 @@ EXT int debug INIT(0);
 EXT int dlevel INIT(0);
 EXT char debname[40];
 EXT char debdelim[40];
-#define YYDEBUG;
+#define YYDEBUG 1
 extern int yydebug;
 #endif
 
@@ -176,18 +204,11 @@ EXT struct loop {
 EXT int loop_ptr INIT(-1);
 
 EXT jmp_buf top_env;
+EXT jmp_buf eval_env;
 
 EXT char *goto_targ INIT(Nullch);	/* cmd_exec gets strange when set */
 
 double atof();
-long time();
-struct tm *gmtime(), *localtime();
-
-#ifdef CHARSPRINTF
-    char *sprintf();
-#else
-    int sprintf();
-#endif
 
 #ifdef EUNICE
 #define UNLINK(f) while (unlink(f) >= 0)

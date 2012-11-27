@@ -1,12 +1,19 @@
-/* $Header: stab.c,v 1.0 87/12/18 13:06:14 root Exp $
+/* $Header: stab.c,v 1.0.1.2 88/02/02 11:25:53 root Exp $
  *
  * $Log:	stab.c,v $
+ * Revision 1.0.1.2  88/02/02  11:25:53  root
+ * patch13: moved extern int out of function for a poor Xenix machine.
+ * 
+ * Revision 1.0.1.1  88/01/28  10:35:17  root
+ * patch8: changed some stabents to support eval operator.
+ * 
  * Revision 1.0  87/12/18  13:06:14  root
  * Initial revision
  * 
  */
 
 #include <signal.h>
+#include <errno.h>
 #include "handy.h"
 #include "EXTERN.h"
 #include "search.h"
@@ -67,7 +74,6 @@ STAB *stab;
 {
     register int paren;
     register char *s;
-    extern int errno;
 
     switch (*stab->stab_name) {
     case '0': case '1': case '2': case '3': case '4':
@@ -169,12 +175,18 @@ STR *str;
 	case '^':
 	    safefree(curoutstab->stab_io->top_name);
 	    curoutstab->stab_io->top_name = str_get(str);
-	    curoutstab->stab_io->top_stab = stabent(str_get(str),FALSE);
+	    curoutstab->stab_io->top_stab = stabent(str_get(str),TRUE);
 	    break;
 	case '~':
-	    safefree(curoutstab->stab_io->fmt_name);
+	    /* FIXME: investigate more carefully.  When the following
+	     * safefree is allowed to happen the subsequent stabent call
+	     * results in a segfault.  Commenting it out is a cheap band-aid
+	     * and probably a memory leak rolled into one 
+	     * 	-- richardc 2002-08-14
+	     */
+	    /* safefree(curoutstab->stab_io->fmt_name); */
 	    curoutstab->stab_io->fmt_name = str_get(str);
-	    curoutstab->stab_io->fmt_stab = stabent(str_get(str),FALSE);
+	    curoutstab->stab_io->fmt_stab = stabent(str_get(str),TRUE);
 	    break;
 	case '=':
 	    curoutstab->stab_io->page_len = (long)str_gnum(str);
@@ -237,7 +249,7 @@ STR *str;
 	}
     }
     else if (stab == envstab && envname) {
-	setenv(envname,str_get(str));
+	PL_setenv(envname,str_get(str));
 				/* And you'll never guess what the dog had */
 	safefree(envname);	/*   in its mouth... */
 	envname = Nullch;
@@ -274,7 +286,7 @@ int sig;
     ARRAY *savearray;
     STR *str;
 
-    stab = stabent(str_get(hfetch(sigstab->stab_hash,sig_name[sig])),FALSE);
+    stab = stabent(str_get(hfetch(sigstab->stab_hash,sig_name[sig])),TRUE);
     savearray = defstab->stab_array;
     defstab->stab_array = anew();
     str = str_new(0);

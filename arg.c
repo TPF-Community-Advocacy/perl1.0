@@ -1,6 +1,24 @@
-/* $Header: arg.c,v 1.0 87/12/18 13:04:33 root Exp $
+/* $Header: arg.c,v 1.0.1.7 88/02/02 11:22:19 root Exp $
  *
  * $Log:	arg.c,v $
+ * Revision 1.0.1.7  88/02/02  11:22:19  root
+ * patch13: fixed split(' ') to work right second time.  Added CRYPT dependency.
+ * 
+ * Revision 1.0.1.6  88/02/01  17:32:26  root
+ * patch12: made split(' ') behave like awk in ignoring leading white space.
+ * 
+ * Revision 1.0.1.5  88/01/30  08:53:16  root
+ * patch9: fixed some missing right parens introduced (?) by patch 2
+ * 
+ * Revision 1.0.1.4  88/01/28  10:22:06  root
+ * patch8: added eval operator.
+ * 
+ * Revision 1.0.1.2  88/01/24  03:52:34  root
+ * patch 2: added STATBLKS dependencies.
+ * 
+ * Revision 1.0.1.1  88/01/21  21:27:10  root
+ * Now defines signal return values correctly using VOIDSIG.
+ * 
  * Revision 1.0  87/12/18  13:04:33  root
  * Initial revision
  * 
@@ -208,6 +226,15 @@ STR ***retary;
 	char *d;
 
 	m = str_get(eval(spat->spat_runtime,Null(STR***)));
+	if (!*m || (*m == ' ' && !m[1])) {
+	    m = "[ \\t\\n]+";
+	    spat->spat_flags |= SPAT_SKIPWHITE;
+	}
+	if (spat->spat_runtime->arg_type == O_ITEM &&
+	  spat->spat_runtime[1].arg_type == A_SINGLE) {
+	    arg_free(spat->spat_runtime);	/* it won't change, so */
+	    spat->spat_runtime = Nullarg;	/* no point compiling again */
+	}
 	if (d = compile(&spat->spat_compex,m,TRUE,FALSE)) {
 #ifdef DEBUGGING
 	    deb("/%s/: %s\n", m, d);
@@ -227,6 +254,10 @@ STR ***retary;
     if (!ary)
 	myarray = ary = anew();
     ary->ary_fill = -1;
+    if (spat->spat_flags & SPAT_SKIPWHITE) {
+	while (isspace(*s))
+	    s++;
+    }
     while (*s && (m = execute(&spat->spat_compex, s, (iters == 0), 1))) {
 	if (spat->spat_compex.numsubs)
 	    s = spat->spat_compex.subbase;
@@ -539,8 +570,13 @@ STR ***retary;
 	    apush(ary,str_nmake((double)statbuf.st_atime));
 	    apush(ary,str_nmake((double)statbuf.st_mtime));
 	    apush(ary,str_nmake((double)statbuf.st_ctime));
+#ifdef STATBLOCKS
 	    apush(ary,str_nmake((double)statbuf.st_blksize));
 	    apush(ary,str_nmake((double)statbuf.st_blocks));
+#else
+	    apush(ary,str_make(""));
+	    apush(ary,str_make(""));
+#endif
 	}
 	sarg = (STR**)safemalloc((max+2)*sizeof(STR*));
 	sarg[0] = Nullstr;
@@ -635,11 +671,16 @@ register STR **sarg;
     register char *t;
     bool dolong;
     char ch;
+    static STR *sargnull = &str_no;
 
     str_set(str,"");
     len--;			/* don't count pattern string */
     sarg++;
-    for (s = str_get(*(sarg++)); *sarg && *s && len; len--) {
+    for (s = str_get(*(sarg++)); *s; len--) {
+	if (len <= 0 || !*sarg) {
+	    sarg = &sargnull;
+	    len = 0;
+	}
 	dolong = FALSE;
 	for (t = s; *t && *t != '%'; t++) ;
 	if (!*t)
@@ -1016,7 +1057,7 @@ STR ***retary;
 	    apush(ary,str_make(str_get(hiterval(entry))));
     }
     if (retary) { /* array wanted */
-	sarg = (STR**)saferealloc((char*)sarg,(max+2)*sizeof(STR*));
+	sarg = (STR**)safemalloc((max+2)*sizeof(STR*));
 	sarg[0] = Nullstr;
 	sarg[max+1] = Nullstr;
 	for (i = 1; i <= max; i++)
@@ -1043,7 +1084,7 @@ STR ***retary;
 
     if (retary) { /* array wanted */
 	if (entry) {
-	    sarg = (STR**)saferealloc((char*)sarg,4*sizeof(STR*));
+	    sarg = (STR**)safemalloc(4*sizeof(STR*));
 	    sarg[0] = Nullstr;
 	    sarg[3] = Nullstr;
 	    sarg[1] = mystr = str_make(hiterkey(entry));
@@ -1051,7 +1092,7 @@ STR ***retary;
 	    *retary = sarg;
 	}
 	else {
-	    sarg = (STR**)saferealloc((char*)sarg,2*sizeof(STR*));
+	    sarg = (STR**)safemalloc(2*sizeof(STR*));
 	    sarg[0] = Nullstr;
 	    sarg[1] = retstr = Nullstr;
 	    *retary = sarg;
@@ -1171,10 +1212,16 @@ init_eval()
     opargs[O_UNSHIFT] =		A(1,0,0);
     opargs[O_LINK] =		A(1,1,0);
     opargs[O_REPEAT] =		A(1,1,0);
+    opargs[O_EVAL] =		A(1,0,0);
 }
 
+#ifdef VOIDSIG
+static void (*ihand)();
+static void (*qhand)();
+#else
 static int (*ihand)();
 static int (*qhand)();
+#endif
 
 STR *
 eval(arg,retary)
@@ -1912,8 +1959,13 @@ STR ***retary;		/* where to return an array to, null if nowhere */
 	retary = Null(STR***);		/* do_stat already did retary */
 	goto donumset;
     case O_CRYPT:
+#ifdef HAS_CRYPT
 	tmps = str_get(sarg[1]);
 	str_set(str,crypt(tmps,str_get(sarg[2])));
+#else
+	fatal(
+	  "The crypt() function is unimplemented due to excessive paranoia.");
+#endif
 	break;
     case O_EXP:
 	value = exp(str_gnum(sarg[1]));
@@ -2067,6 +2119,11 @@ STR ***retary;		/* where to return an array to, null if nowhere */
 	    astore(ary,0,str);
 	}
 	value = (double)(ary->ary_fill + 1);
+	break;
+    case O_EVAL:
+	str_sset(str,
+	    do_eval(arg[1].arg_type != A_NULL ? sarg[1] : defstab->stab_val) );
+	STABSET(str);
 	break;
     }
 #ifdef DEBUGGING

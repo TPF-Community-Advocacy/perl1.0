@@ -1,6 +1,12 @@
-/* $Header: search.c,v 1.0 87/12/18 13:05:59 root Exp $
+/* $Header: search.c,v 1.0.1.2 88/01/28 10:30:46 root Exp $
  *
  * $Log:	search.c,v $
+ * Revision 1.0.1.2  88/01/28  10:30:46  root
+ * patch8: uncommented free_compex for use with eval operator.
+ * 
+ * Revision 1.0.1.1  88/01/24  03:55:05  root
+ * patch 2: made depend on perl.h.
+ * 
  * Revision 1.0  87/12/18  13:05:59  root
  * Initial revision
  * 
@@ -8,14 +14,13 @@
 
 /* string search routines */
  
-#include <stdio.h>
-#include <ctype.h>
-
 #include "EXTERN.h"
 #include "handy.h"
 #include "util.h"
 #include "INTERN.h"
 #include "search.h"
+#include "EXTERN.h"
+#include "perl.h"
 
 #define VERBOSE
 #define FLUSH
@@ -105,7 +110,6 @@ register COMPEX *compex;
     compex->subbase = Nullch;
 }
 
-#ifdef NOTUSED
 void
 free_compex(compex)
 register COMPEX *compex;
@@ -119,7 +123,6 @@ register COMPEX *compex;
 	compex->subbase = Nullch;
     }
 }
-#endif
 
 static char *gbr_str = Nullch;
 static int gbr_siz = 0;

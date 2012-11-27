@@ -1,10 +1,24 @@
-/* $Header: a2p.h,v 1.0 87/12/18 13:06:58 root Exp $
+/* $Header: a2p.h,v 1.0.1.2 88/02/01 17:33:40 root Exp $
  *
  * $Log:	a2p.h,v $
+ * Revision 1.0.1.2  88/02/01  17:33:40  root
+ * patch12: forgot to fix #define YYDEBUG; bug in a2p.
+ * 
+ * Revision 1.0.1.1  88/01/26  09:52:30  root
+ * patch 5: a2p didn't use config.h.
+ * 
  * Revision 1.0  87/12/18  13:06:58  root
  * Initial revision
  * 
  */
+
+#define VOIDUSED 1
+#include "../config.h"
+
+#ifndef BCOPY
+#   define bcopy(s1,s2,l) memcpy(s2,s1,l);
+#   define bzero(s,l) memset(s,0,l);
+#endif
 
 #include "handy.h"
 #define Nullop 0
@@ -215,7 +229,7 @@ EXT int expectterm INIT(TRUE);
 #ifdef DEBUGGING
 EXT int debug INIT(0);
 EXT int dlevel INIT(0);
-#define YYDEBUG;
+#define YYDEBUG 1
 extern int yydebug;
 #endif
 

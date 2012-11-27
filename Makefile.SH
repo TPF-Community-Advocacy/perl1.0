@@ -12,17 +12,34 @@ esac
 case "$0" in
 */*) cd `expr X$0 : 'X\(.*\)/'` ;;
 esac
+
+case "$d_symlink" in
+*define*) sln='ln -s' ;;
+*) sln='ln';;
+esac
+
 echo "Extracting Makefile (with variable substitutions)"
 cat >Makefile <<!GROK!THIS!
-# $Header: Makefile.SH,v 1.0 87/12/18 16:11:50 root Exp $
+# $Header: Makefile.SH,v 1.0.1.5 88/02/02 11:20:49 root Exp $
 #
 # $Log:	Makefile.SH,v $
+# Revision 1.0.1.5  88/02/02  11:20:49  root
+# patch13: added d_symlink dependency, changed TEST to ./perl TEST.
+# 
+# Revision 1.0.1.4  88/01/28  10:17:59  root
+# patch8: added perldb.man
+# 
+# Revision 1.0.1.3  88/01/26  14:14:52  root
+# Added mallocsrc stuff.
+# 
+# Revision 1.0.1.2  88/01/26  08:46:04  root
+# patch 4: make depend didn't work right if . wasn't in PATH.
+# 
+# Revision 1.0.1.1  88/01/24  03:55:18  root
+# patch 2: remove extra Log lines.
+# 
 # Revision 1.0  87/12/18  16:11:50  root
 # Initial revision
-# 
-# Revision 1.0  87/12/18  16:01:07  root
-# Initial revision
-# 
 # 
 
 CC = $cc
@@ -34,17 +51,20 @@ CFLAGS = $ccflags -O
 LDFLAGS = $ldflags
 SMALL = $small
 LARGE = $large $split
+mallocsrc = $mallocsrc
+mallocobj = $mallocobj
+SLN = $sln
 
-libs = $libnm -lm
+libs = $libs $cryptlib $libnm -lm
 !GROK!THIS!
 
 cat >>Makefile <<'!NO!SUBS!'
 
-public = perl
+public = perl perldb
 
 private = 
 
-manpages = perl.man
+manpages = perl.man perldb.man
 
 util =
 
@@ -55,12 +75,12 @@ h2 = hash.h perl.h search.h spat.h stab.h str.h util.h
 
 h = $(h1) $(h2)
 
-c1 = arg.c array.c cmd.c dump.c form.c hash.c malloc.c
+c1 = arg.c array.c cmd.c dump.c form.c hash.c $(mallocsrc)
 c2 = search.c stab.c str.c util.c version.c
 
 c = $(c1) $(c2)
 
-obj1 = arg.o array.o cmd.o dump.o form.o hash.o malloc.o
+obj1 = arg.o array.o cmd.o dump.o form.o hash.o $(mallocobj)
 obj2 = search.o stab.o str.o util.o version.o
 
 obj = $(obj1) $(obj2)
@@ -138,11 +158,11 @@ lint:
 	lint $(lintflags) $(defs) $(c) > perl.fuzz
 
 depend: makedepend
-	makedepend
+	./makedepend
 
 test: perl
 	chmod 755 t/TEST t/base.* t/comp.* t/cmd.* t/io.* t/op.*
-	cd t && (rm -f perl; ln -s ../perl . || ln ../perl .) && TEST
+	cd t && (rm -f perl; $(SLN) ../perl .) && ./perl TEST
 
 clist:
 	echo $(c) | tr ' ' '\012' >.clist
